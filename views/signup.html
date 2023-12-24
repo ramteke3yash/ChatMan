@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.1" />
+    <link rel="stylesheet" href="./style.css" />
+    <script
+      type="module"
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"
+    ></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Signup | ChatMan</title>
+  </head>
+  <body class="bg-gray-900">
+    <header class="text-gray-400 bg-gray-950 body-font">
+      <div
+        class="container mx-auto flex flex-wrap p-5 flex-col md:flex-row items-center"
+      >
+        <a
+          class="flex title-font font-medium items-center text-white mb-4 md:mb-0"
+        >
+          <ion-icon
+            name="chatbox-ellipses"
+            style="font-size: 1.75rem"
+          ></ion-icon>
+          <span class="ml-3 text-xl">ChatMan</span>
+        </a>
+        <nav
+          class="md:ml-auto md:mr-auto flex flex-wrap items-center text-base justify-center"
+        ></nav>
+      </div>
+    </header>
+    <section class="text-gray-400 bg-gray-900 body-font">
+      <div class="container px-5 py-24 mx-auto flex flex-wrap items-center">
+        <div class="lg:w-3/5 md:w-1/2 md:pr-16 lg:pr-0 pr-0">
+          <h1 class="title-font font-medium text-3xl text-white">
+            Join forces with ChatMan and his allies, as we assemble the ultimate
+            group chat to save Gotham from the mischievous Joker.
+          </h1>
+          <p class="leading-relaxed mt-4">
+            Are you ready to embark on this epic quest? Let the laughter and
+            messages flow as we beat the Joker together!
+          </p>
+        </div>
+        <div
+          class="lg:w-2/6 md:w-1/2 bg-gray-800 bg-opacity-50 rounded-lg p-8 flex flex-col md:ml-auto w-full mt-10 md:mt-0"
+        >
+          <h2 class="text-white text-lg font-medium title-font mb-5">
+            <script
+              src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"
+              integrity="sha512-uMtXmF28A2Ab/JJO2t/vYhlaa/3ahUOgj1Zf27M5rOo8/+fcTUVH0/E0ll68njmjrLqOBjXM3V9NiPFL5ywWPQ=="
+              crossorigin="anonymous"
+              referrerpolicy="no-referrer"
+            ></script>
+            Sign Up
+          </h2>
+          <div
+            class="bg-red-100 border border-red-400 text-red-700 px-2 py-1 mt-3 rounded relative"
+            role="alert"
+            id="duplicate-warning"
+            style="display: none"
+          >
+            <strong>Email in use!</strong>
+            <span class="block sm:inline text-sm"
+              >A user with this email already exists.</span
+            >
+          </div>
+          <div class="relative mb-4">
+            <label for="full-name" class="leading-7 text-sm text-gray-400"
+              >Full Name</label
+            >
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              class="w-full bg-gray-600 bg-opacity-20 focus:bg-transparent focus:ring-2 focus:ring-blue-900 rounded border border-gray-600 focus:border-blue-500 text-base outline-none text-gray-100 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out"
+            />
+            <div
+              class="bg-red-100 border border-red-400 text-red-700 px-2 py-1 mt-3 rounded relative"
+              role="alert"
+              id="name-warning"
+              style="display: none"
+            >
+              <strong>Name not valid!</strong>
+              <span class="block sm:inline text-sm"
+                >Names can not contain symbols or numbers and must have 1 to 30
+                characters.</span
+              >
+            </div>
+          </div>
+          <div class="relative mb-4">
+            <label for="email" class="leading-7 text-sm text-gray-400"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              class="w-full bg-gray-600 bg-opacity-20 focus:bg-transparent focus:ring-2 focus:ring-blue-900 rounded border border-gray-600 focus:border-blue-500 text-base outline-none text-gray-100 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out"
+            />
+            <div
+              class="bg-red-100 border border-red-400 text-red-700 px-2 py-1 mt-3 rounded relative"
+              role="alert"
+              id="email-warning"
+              style="display: none"
+            >
+              <strong>Invalid email!</strong>
+              <span class="block sm:inline text-sm"
+                >Please check the email you entered.</span
+              >
+            </div>
+          </div>
+          <div class="relative mb-4">
+            <label for="password" class="leading-7 text-sm text-gray-400"
+              >Password</label
+            >
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              class="w-full bg-gray-600 bg-opacity-20 focus:bg-transparent focus:ring-2 focus:ring-blue-900 rounded border border-gray-600 focus:border-blue-500 text-base outline-none text-gray-100 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out"
+            />
+            <div
+              class="bg-red-100 border border-red-400 text-red-700 px-2 py-1 mt-3 rounded relative"
+              role="alert"
+              id="password-warning"
+              style="display: none"
+            >
+              <strong>Password weak af!</strong>
+              <span class="block sm:inline text-sm"
+                >It must be at least 8 characters long and must have a symbol,
+                number, small and capital letters.</span
+              >
+            </div>
+          </div>
+          <button
+            class="text-white bg-blue-500 border-0 py-2 px-8 focus:outline-none hover:bg-blue-600 rounded text-lg"
+            id="signup"
+          >
+            Let's Go
+          </button>
+          <p class="text-xs mt-3">
+            Already a member? <a href="/login" class="text-blue-500">Login</a>
+          </p>
+        </div>
+      </div>
+    </section>
+    <script src="../public/signup.js" type="application/javascript"></script>
+  </body>
+</html>

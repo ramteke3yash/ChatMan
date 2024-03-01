@@ -1,12 +1,26 @@
 const express = require("express");
 const path = require("path");
+const cors = require("cors");
 const session = require("express-session");
 const bodyParser = require("body-parser");
 const mysql = require("mysql2/promise");
-const db = require("./util/db");
+const { Op } = require("sequelize");
+const db = require("./utils/db");
+const scheduleChatArchivalCronJob = require("./utils/cronJob");
 
 const app = express();
 
+require("dotenv").config();
+
+// CORS middleware
+app.use(
+  cors({
+    origin: ["http://127.0.0.1:3000", "http://127.0.0.1:5501"],
+    methods: ["GET", "POST"],
+  })
+);
+
+// express-session middleware
 app.use(
   session({
     secret: "sekretcey987123",
@@ -17,23 +31,32 @@ app.use(
     },
   })
 );
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
 
+// body parser middleware
+app.use(bodyParser.json());
+
+// Static file middleware
+app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(__dirname, "views")));
 
+// Route handling
 const signupRoutes = require("./routes/signupRoutes");
 const loginRoutes = require("./routes/loginRoutes");
+const chatRoutes = require("./routes/chatRoutes");
+const groupRoutes = require("./routes/groupRoutes");
 
 app.get("/", signupRoutes);
 app.use("/signup", signupRoutes);
 app.use("/login", loginRoutes);
+app.use("/chat", chatRoutes);
+app.use("/group", groupRoutes);
 
+// Database connection and model definitions
 (async () => {
   const connection = await mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "lion",
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
   });
 
   const User = require("./models/userModel");
@@ -56,8 +79,12 @@ app.use("/login", loginRoutes);
   Chat.belongsTo(Group);
 
   // await db.sync({ force: true });
-  await db.sync({ force: true });
-  app.listen(4000, () => {
+  await db.sync();
+
+  app.listen(3000, () => {
     console.log("server started");
   });
+
+  //set up cron job
+  scheduleChatArchivalCronJob();
 })();

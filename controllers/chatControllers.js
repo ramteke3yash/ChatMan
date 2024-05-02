@@ -6,6 +6,7 @@ const { Op } = require("sequelize");
 const Chat = require("../models/chatModel");
 const Group = require("../models/groupModel");
 const User = require("../models/userModel");
+const { io } = require("../app");
 
 exports.getActiveUsers = async (req, res) => {
   try {
@@ -54,7 +55,8 @@ exports.getChatPage = (req, res) => {
 
 exports.saveMessage = async (req, res) => {
   try {
-    const { message, groupId } = req.body;
+    // Extract necessary data from the request
+    const { groupId } = req.body;
     let imageUrl = null;
 
     // If a file is attached, read it and upload it to AWS S3
@@ -64,53 +66,21 @@ exports.saveMessage = async (req, res) => {
 
       imageUrl = await S3Service.uploadToS3(imageBuffer, filename);
     } else {
+      // Handle case where no file is attached (if needed)
       console.log("File not exists");
     }
 
     // Create a new chat entry in the database
     const chat = await Chat.create({
       userId: req.session.userId,
-      message,
       groupId,
       url: imageUrl,
     });
 
     // Send JSON response indicating success
-    res.status(201).json({ message: "success" });
+    res.status(201).json({ message: "success", imageUrl });
   } catch (err) {
     console.error(err);
-    res.status(501).json({ message: "Something went wrong" });
-  }
-};
-
-exports.getMessages = async (req, res) => {
-  try {
-    // Extract groupId and lastMessageId from the request headers
-    const groupId = req.get("groupId");
-    const lastMessageId = req.get("lastMessageId");
-
-    // Retrieve messages for the specified group and last message ID
-    const messages = await Chat.findAll({
-      where: {
-        groupId,
-        id: {
-          [Op.gt]: lastMessageId,
-        },
-      },
-      raw: true,
-      attributes: ["message", "url", "id", "createdAt"],
-      include: [
-        {
-          model: User,
-          attributes: ["name"],
-        },
-      ],
-    });
-
-    // Send JSON response with the retrieved messages
-    res.status(200).json({ messages });
-  } catch (err) {
-    console.log(err);
-    res.status(501).json({ message: "Something went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
   }
 };

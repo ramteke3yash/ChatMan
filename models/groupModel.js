@@ -1,4 +1,4 @@
-const db = require("../util/db");
+const db = require("../utils/db");
 const Sequelize = require("sequelize");
 
 const Group = db.define("group", {

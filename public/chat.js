@@ -1,5 +1,6 @@
-// base URL for API requests
 const BASE_URL = "http://localhost:3000";
+
+const socket = io(`${BASE_URL}`);
 
 /*****************************FRONTEND******************************/
 
@@ -68,10 +69,6 @@ showUsersButton.addEventListener("click", () => {
   } else USER_TOGGLE = true;
 });
 
-/**
- * Asynchronously appends a list of active users to the users panel.
- * If no group is selected, a message is displayed indicating the need to select a group.
- */
 async function appendActiveUsers() {
   try {
     // Check if no group is selected
@@ -127,10 +124,6 @@ async function appendActiveUsers() {
   }
 }
 
-/**
- * Asynchronously appends a list of groups to the groups panel.
- * Additionally, includes a button to create a new group.
- */
 async function appendGroups() {
   try {
     // Fetch all user groups from the server
@@ -164,216 +157,148 @@ async function appendGroups() {
   }
 }
 
-/**
- * Asynchronously loads the chat content for the specified group.
- * Updates the group name, chat box, and displays admin tools.
- * @param {HTMLElement} element - The HTML element that triggered the group load (can be null).
- * @param {number} groupId - The ID of the group to load.
- */
 async function loadGroup(element, groupId) {
-  // Check if a default group is selected
-  if (groupId === 0) {
-    //Update UI elements for the default group
-    document.getElementById("groupName").textContent = "ChatMan";
-    chatBox.textContent =
-      "Please select a group or create one to begin chatting!";
-    document.getElementById("ipHandler").style.display = "none";
-  } else {
-    //Update UI elements for the selected group
-    document.getElementById("groupName").textContent =
-      element.lastElementChild.textContent;
-    chatBox.textContent = "";
-    document.getElementById("ipHandler").style.display = "";
+  try {
+    // Check if a default group is selected
+    if (groupId === 0) {
+      // Update UI elements for the default group
+      document.getElementById("groupName").textContent = "ChatMan";
+      chatBox.textContent =
+        "Please select a group or create one to begin chatting!";
+      document.getElementById("ipHandler").style.display = "none";
+    } else {
+      // Update UI elements for the selected group
+      document.getElementById("groupName").textContent =
+        element.lastElementChild.textContent;
+      chatBox.textContent = "";
+      document.getElementById("ipHandler").style.display = "";
 
-    //load the chat content for the selected group
-    await loadGroupchat(groupId);
+      // Scroll to the bottom of the chat box
+      chatBox.scrollTop = chatBox.scrollHeight;
 
-    //Scroll to the bottom of the chat box
-    chatBox.scrollTop = chatBox.scrollHeight;
+      // Update the global group ID
+      GROUP_ID = groupId;
+      console.log("this gid-->", groupId);
 
-    //Update the global group ID
-    GROUP_ID = groupId;
+      // Append admin tools and switch to the groups view
+      await appendAdminTools();
+      showGroupsButton.click();
 
-    //Append admin tools and switch to the groups view
-    await appendAdminTools();
-    showGroupsButton.click();
+      // Emit a 'join-room' event to the server
+      socket.emit("join-room", groupId, (messages, users) => {
+        // Process the messages received from the server if needed
+        // For example, you can display the messages in the chat box
+        if (messages && messages.length > 0) {
+          messages.forEach((message) => {
+            showMessage(
+              message.message,
+              // message.sender ? message.sender.name : "Unknown",
+              message.user ? message.user.name : "Unknown",
+              message.url,
+              message.createdAt
+            );
+          });
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error loading group:", error);
+    // Handle the error appropriately, e.g., display an error message to the user
   }
 }
 
-/**
- * Appends a new chat message to the chat box.
- * @param {string} message - The message content.
- * @param {string} name - The name of the user sending the message.
- * @param {string} url - The URL associated with the message (optional).
- * @param {string} createdAt - The timestamp when the message was created.
- */
-function showMessage(message, name, url, createdAt) {
-  chatBox.innerHTML += `
-    <div class="bg-gray-800 rounded text-start p-4 my-3 mx-3">
-      <span class="text-white">${name}:&nbsp</span>
-      <div class="bg-gray-800 my-1">
-        ${url ? `<img   src ="${url}"  />` : ""}
+function getLocalDateTime(gmtDateTimeString) {
+  const gmtDateTime = new Date(gmtDateTimeString);
+  return gmtDateTime.toLocaleString(); // Converts both date and time to local time
+}
+
+function showMessage(message, name, url, createdAt, userId) {
+  const localDateTime = new Date(createdAt).toLocaleString();
+  const displayName = name || "Unknown";
+
+  // Initialize an empty string to hold the message content
+  let messageContent = "";
+
+  // Include the message in the message content if it's provided
+  if (message) {
+    messageContent += `<div>${message}</div>`;
+  }
+
+  if (url) {
+    // Apply Tailwind CSS classes to limit the maximum width of the image
+    messageContent += `
+      <div class="max-w-md mx-auto">
+        <img src="${url}" alt="Image" class="max-w-full h-auto mx-auto" />
       </div>
-      ${message ? message : ""}
-      <p class="text-xs text-gray-400 mt-1">${createdAt}</p>
-    </div>
-  `;
+    `;
+  }
+
+  // Only append the message box if message content exists
+  if (messageContent.trim() !== "") {
+    chatBox.innerHTML += `
+      <div class="bg-gray-800 rounded text-start p-4 my-3 mx-3">
+        <span class="text-white">${displayName}:&nbsp</span>
+        ${messageContent}
+        <p class="text-xs text-gray-400 mt-1">${localDateTime}</p>
+      </div>
+    `;
+  }
 }
 
 /*****************************BACKEND******************************/
 
-/**
- * Asynchronously fetches messages for a specified group and updates the local storage with the latest message ID.
- * If the group ID is less than or equal to zero, the function returns null.
- * @param {number} groupId - The ID of the group for which messages are to be fetched.
- */
-async function fetchMessages(groupId) {
-  try {
-    // check if the group ID is valid
-    if (groupId <= 0) return null;
+// Listen for incoming chat messages from Socket.io
+socket.on("message:recieve-message", (msg) => {
+  showMessage(msg.text, msg.name, msg.url, msg.createdAt, msg.userId);
+  // Scroll the chat box to the bottom
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
 
-    //Retrieve stored messages from local storage
-    let storedMessages = JSON.parse(localStorage.getItem("storedMessages"));
-
-    // Retrieve the last stored message ID for the specified group
-    let lastMessageId = localStorage.getItem(groupId);
-
-    // Set lastMessageId to 0 if not present in local storage
-    if (!lastMessageId) lastMessageId = 0;
-
-    //Make an asynchronous HTTP GET request to fetch messages for the specified group
-    const res = await axios.get(BASE_URL + "/chat/all", {
-      headers: {
-        groupId,
-        lastMessageId,
-      },
-    });
-
-    // Extract messages from the response
-    const { messages } = res.data;
-
-    // Update the lastMessageId in local storage with the ID of the latest message
-    if (messages.length > 0)
-      localStorage.setItem(groupId, messages[messages.length - 1].id);
-    else return;
-
-    //Initialize storedMessages if not present
-    if (!storedMessages) storedMessages = { groupId: [] };
-
-    // Initailize group-specific message array if not present
-    if (!storedMessages[groupId]) storedMessages[groupId] = [];
-
-    //Process each message and update storedMessages and UI
-    for (const message of messages) {
-      const dateTime = message.createdAt.split("T");
-
-      //push message details to storedMessages array
-      storedMessages[groupId].push([
-        message["user.name"],
-        message.message,
-        message.url || "",
-        `${getLocalTime(dateTime[1].split(".")[0])}  ${dateTime[0]}`,
-      ]);
-
-      // Display the message in the UI
-      showMessage(
-        message.message,
-        message["user.name"],
-        message.url,
-        storedMessages[groupId][storedMessages[groupId].length - 1][3]
-      );
-    }
-
-    //Update local Storage with the modified storedMessages
-    await localStorage.setItem(
-      "storedMessages",
-      JSON.stringify(storedMessages)
-    );
-    //Scroll the chat box to the bottom
-    chatBox.scrollTop = chatBox.scrollHeight;
-  } catch (err) {
-    //Handle err
-    console.error(err);
-  }
-}
-
-/**
- * Converts a GMT time string to local time and returns the formatted time.
- * @param {string} gmtTimeString - The GMT time string to be converted.
- * @returns {string} - The formatted local time.
- */
-function getLocalTime(gmtTimeString) {
-  const gmtTime = new Date(`1970-01-01T${gmtTimeString}Z`);
-  return gmtTime.toLocaleTimeString();
-}
-
-/**
- * Asynchronously sends a message to the server, including optional file attachment,
- * for the current group. Clears input fields after sending.
- * @throws {Error} If there is an issue with the HTTP request or response.
- */
 async function sendMessage() {
   try {
-    // Get references to message and file input elements
     const messageInput = document.getElementById("message");
     const fileInput = document.getElementById("fileInput");
 
-    // Extract message and file data from input elements
     const message = messageInput.value;
     const file = fileInput.files[0];
 
-    // Check if both message and file are empty, and return if true
+    // Check if only the file is being uploaded
     if (!message && !file) {
       return;
     }
 
-    //Create a FormData object to send message and file data as as multipart/form-data request
+    // Create a FormData object to send the file data
     const formData = new FormData();
-    formData.append("message", message);
     formData.append("file", file);
     formData.append("groupId", GROUP_ID);
 
-    // Define headers for the HTTP request
-    const config = {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    };
-
-    //Make an asynchronous HTTP POST request to send the message and file to the server
-    const res = await axios.post(
+    // Use Axios to send a POST request to your server with the FormData for file upload
+    const response = await axios.post(
       BASE_URL + "/chat/saveMessage",
       formData,
-      config
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
     );
 
-    //Clear message and file input fields after successful message sending
+    // Handle the response to get the image URL
+    const imageUrl = response.data.imageUrl;
+
+    // Emit the message with the image URL to Socket.io clients
+    socket.emit("message:send-message", {
+      message,
+      imageUrl,
+      groupId: GROUP_ID,
+    });
+
+    // Clear the message input and file input fields
     messageInput.value = "";
     fileInput.value = "";
-
-    //Trigger click event to discard any selected image
     document.getElementById("discardImage").click();
   } catch (err) {
-    //Handle err
     console.error(err);
-  }
-}
-
-// Periodically fetch messages for the current group every second
-setInterval(async () => {
-  await fetchMessages(GROUP_ID);
-}, 1000);
-
-/**
- * Asynchronously loads and displays stored messages for a specific group in the chat box.
- * @param {number} groupId - The ID of the group for which messages are to be loaded.
- */
-async function loadGroupchat(groupId) {
-  chatBox.innerHTML = "";
-  const storedMessages = JSON.parse(localStorage.getItem("storedMessages"));
-  if (!storedMessages || !storedMessages[groupId]) return;
-  for (const message of storedMessages[groupId]) {
-    showMessage(message[1], message[0], message[2], message[3]);
   }
 }
 
@@ -387,9 +312,6 @@ document.getElementById("overlay").onclick = clearNewGroupForm;
 document.getElementById("adminOverlay").onclick = clearUpdateGroupForm;
 document.getElementById("closeForm").onclick = clearNewGroupForm;
 
-/**
- * Clears the new group form overlay by resetting input fields and closing the modal.
- */
 function clearNewGroupForm() {
   const modal = document.getElementById("modal");
   const groupNameField = document.getElementById("group-name");
@@ -404,9 +326,6 @@ function clearNewGroupForm() {
   modal.classList.toggle("-z-10");
 }
 
-/**
- * Asynchronously opens the new group form overlay and appends all available users for selection.
- */
 async function createNewGroup() {
   try {
     const modal = document.getElementById("modal");
@@ -419,10 +338,6 @@ async function createNewGroup() {
   }
 }
 
-/**
- * Asynchronously submits new group data to the server for creation.
- * Validates input, handles errors, and updates the UI on success.
- */
 async function submitNewGroupData() {
   const groupNameField = document.getElementById("group-name");
   try {
@@ -496,10 +411,6 @@ async function submitNewGroupData() {
   }
 }
 
-/**
- * Asynchronously retrieves all users from the server and appends them to the users list in the new group form.
- * Enables users to be added to a group and assigned as administrators.
- */
 async function appendAllUsers() {
   try {
     // Retrieve the users list container from the DOM
@@ -576,10 +487,6 @@ document.getElementById("modal").addEventListener("keypress", (e) => {
   if (e.key === "Enter") submitNewGroupData();
 });
 
-/**
- * Asynchronously appends administrative tools to the group name display if the current user is an admin of the group.
- * @param {string} groupName - The name of the current group.
- */
 async function appendAdminTools(groupName) {
   try {
     // Make an asynchronous HTTP GET request to check if the current user is an admin of the group
@@ -606,9 +513,6 @@ async function appendAdminTools(groupName) {
   }
 }
 
-/**
- * Clears the update group form by resetting the input fields and hiding the form modal.
- */
 function clearUpdateGroupForm() {
   const modal = document.getElementById("adminModal");
   const groupNameField = document.getElementById("group-name-admin");
@@ -625,10 +529,6 @@ function clearUpdateGroupForm() {
   modal.classList.toggle("-z-10");
 }
 
-/**
- * Asynchronously displays the administrative tools for managing group participants.
- * @param {string} groupName - The name of the current group.
- */
 async function showAdminTools(groupName) {
   try {
     const adminModal = document.getElementById("adminModal");
@@ -647,9 +547,6 @@ async function showAdminTools(groupName) {
   }
 }
 
-/**
- * Asynchronously displays the current participants in the administrative form for updating group details.
- */
 async function showCurrentParticipants() {
   try {
     const usersList = document.getElementById("usersListAdmin");
@@ -813,9 +710,6 @@ document.getElementById("updateGroup").addEventListener("click", async () => {
   }
 });
 
-/**
- * Asynchronously deletes the currently selected group and updates the UI accordingly.
- */
 async function deleteGroup() {
   try {
     // Make an asynchronous HTTP PUT request to delete the current group
@@ -830,10 +724,6 @@ async function deleteGroup() {
 
 /***********IMAGE HANDLERS************/
 
-/**
- * Handles the change event of the file input element and updates the UI accordingly.
- * @param {Event} event - The change event object.
- */
 function handleFileInputChange(event) {
   const fileInput = event.target;
   const selectedFileName = document.getElementById("selectedFileName");
@@ -853,9 +743,6 @@ function handleFileInputChange(event) {
   }
 }
 
-/**
- * Discards the selected image by resetting the file input and updating the UI accordingly.
- */
 function discardSelectedImage() {
   const fileInput = document.getElementById("fileInput");
   const selectedFileName = document.getElementById("selectedFileName");
